@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>オセロ</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+  h1 { font-size: 2rem; margin-bottom: 12px; letter-spacing: 2px; }
+  #info {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    height: 1.4em;
+  }
+  #score {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+  }
+  .score-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .disc-icon {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid #555;
+  }
+  .disc-black { background: #111; }
+  .disc-white { background: #f0f0f0; }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+    background: #111;
+    border: 3px solid #333;
+    border-radius: 6px;
+    padding: 2px;
+    width: min(85vw, 480px);
+    height: min(85vw, 480px);
+  }
+  .cell {
+    background: #2d6a4f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    border-radius: 2px;
+  }
+  .cell:hover { background: #3a8a6a; }
+  .cell.hint::after {
+    content: '';
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    position: absolute;
+  }
+  .disc {
+    width: 80%;
+    height: 80%;
+    border-radius: 50%;
+    transition: transform 0.4s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .disc.black { background: radial-gradient(circle at 35% 35%, #444, #111); }
+  .disc.white { background: radial-gradient(circle at 35% 35%, #fff, #ccc); }
+  .disc.flip { animation: flip 0.4s ease; }
+  @keyframes flip {
+    0% { transform: scaleX(1); }
+    50% { transform: scaleX(0); }
+    100% { transform: scaleX(1); }
+  }
+  #buttons { margin-top: 16px; display: flex; gap: 12px; }
+  button {
+    padding: 10px 24px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 6px;
+    background: #16213e;
+    color: #eee;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover { background: #0f3460; }
+  #pass-btn { background: #7b2d26; }
+  #pass-btn:hover { background: #a33; }
+  #pass-btn:disabled { opacity: 0.4; cursor: default; }
+</style>
+</head>
+<body>
+
+<h1>オセロ</h1>
+<div id="score">
+  <div class="score-item"><span class="disc-icon disc-black"></span> 黒: <span id="black-count">2</span></div>
+  <div class="score-item"><span class="disc-icon disc-white"></span> 白: <span id="white-count">2</span></div>
+</div>
+<div id="info">黒の番です</div>
+<div id="board"></div>
+<div id="buttons">
+  <button id="pass-btn" disabled onclick="pass()">パス</button>
+  <button onclick="reset()">リセット</button>
+</div>
+
+<script>
+const EMPTY = 0, BLACK = 1, WHITE = 2;
+const DIRS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+let board, turn, gameOver, passCount;
+
+function init() {
+  board = Array.from({length: 8}, () => Array(8).fill(EMPTY));
+  board[3][3] = WHITE; board[3][4] = BLACK;
+  board[4][3] = BLACK; board[4][4] = WHITE;
+  turn = BLACK;
+  gameOver = false;
+  passCount = 0;
+  render();
+}
+
+function inBounds(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
+
+function getFlips(r, c, player) {
+  if (board[r][c] !== EMPTY) return [];
+  const opp = player === BLACK ? WHITE : BLACK;
+  const allFlips = [];
+  for (const [dr, dc] of DIRS) {
+    const flips = [];
+    let nr = r + dr, nc = c + dc;
+    while (inBounds(nr, nc) && board[nr][nc] === opp) {
+      flips.push([nr, nc]);
+      nr += dr; nc += dc;
+    }
+    if (flips.length > 0 && inBounds(nr, nc) && board[nr][nc] === player) {
+      allFlips.push(...flips);
+    }
+  }
+  return allFlips;
+}
+
+function getValidMoves(player) {
+  const moves = [];
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++)
+      if (getFlips(r, c, player).length > 0) moves.push([r, c]);
+  return moves;
+}
+
+function place(r, c) {
+  if (gameOver || board[r][c] !== EMPTY) return;
+  const flips = getFlips(r, c, turn);
+  if (flips.length === 0) return;
+
+  board[r][c] = turn;
+  const flippedSet = new Set(flips.map(([fr,fc]) => `${fr},${fc}`));
+  for (const [fr, fc] of flips) board[fr][fc] = turn;
+
+  passCount = 0;
+  turn = turn === BLACK ? WHITE : BLACK;
+
+  render(flippedSet);
+
+  // 次のプレイヤーが置けない場合の処理
+  if (getValidMoves(turn).length === 0) {
+    turn = turn === BLACK ? WHITE : BLACK;
+    passCount++;
+    if (getValidMoves(turn).length === 0) {
+      gameOver = true;
+    }
+    render();
+  }
+}
+
+function pass() {
+  if (gameOver) return;
+  if (getValidMoves(turn).length > 0) return;
+  passCount++;
+  if (passCount >= 2) { gameOver = true; render(); return; }
+  turn = turn === BLACK ? WHITE : BLACK;
+  render();
+}
+
+function count(player) {
+  let n = 0;
+  for (let r = 0; r < 8; r++)
+    for (let c = 0; c < 8; c++)
+      if (board[r][c] === player) n++;
+  return n;
+}
+
+function render(flippedSet) {
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  const valid = gameOver ? [] : getValidMoves(turn);
+  const validSet = new Set(valid.map(([r,c]) => `${r},${c}`));
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (validSet.has(`${r},${c}`)) cell.classList.add('hint');
+      cell.addEventListener('click', () => place(r, c));
+
+      if (board[r][c] !== EMPTY) {
+        const disc = document.createElement('div');
+        disc.className = 'disc ' + (board[r][c] === BLACK ? 'black' : 'white');
+        if (flippedSet && flippedSet.has(`${r},${c}`)) disc.classList.add('flip');
+        cell.appendChild(disc);
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+
+  const bc = count(BLACK), wc = count(WHITE);
+  document.getElementById('black-count').textContent = bc;
+  document.getElementById('white-count').textContent = wc;
+
+  const info = document.getElementById('info');
+  const passBtn = document.getElementById('pass-btn');
+
+  if (gameOver) {
+    if (bc > wc) info.textContent = `ゲーム終了！ 黒の勝ち (${bc} - ${wc})`;
+    else if (wc > bc) info.textContent = `ゲーム終了！ 白の勝ち (${wc} - ${bc})`;
+    else info.textContent = `ゲーム終了！ 引き分け (${bc} - ${wc})`;
+    passBtn.disabled = true;
+  } else {
+    const name = turn === BLACK ? '黒' : '白';
+    if (valid.length === 0) {
+      info.textContent = `${name}は置ける場所がありません。パスしてください。`;
+      passBtn.disabled = false;
+    } else {
+      info.textContent = `${name}の番です`;
+      passBtn.disabled = true;
+    }
+  }
+}
+
+function reset() { init(); }
+
+init();
+</script>
+</body>
+</html>
