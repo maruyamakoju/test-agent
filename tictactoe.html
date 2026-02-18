@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>〇×ゲーム</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #1a1a2e;
+    color: #eee;
+  }
+  .container { text-align: center; }
+  h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+  .status {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+    min-height: 2rem;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 120px);
+    grid-template-rows: repeat(3, 120px);
+    gap: 6px;
+    margin: 0 auto 1.5rem;
+  }
+  .cell {
+    background: #16213e;
+    border: 2px solid #0f3460;
+    border-radius: 12px;
+    font-size: 3rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cell:hover { background: #1a2a50; transform: scale(1.03); }
+  .cell.o { color: #e94560; }
+  .cell.x { color: #53d8fb; }
+  .cell.win { background: #0f3460; animation: pulse 0.6s ease-in-out infinite alternate; }
+  @keyframes pulse {
+    to { background: #1a4a80; }
+  }
+  .reset-btn {
+    padding: 0.7rem 2rem;
+    font-size: 1.1rem;
+    background: #e94560;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .reset-btn:hover { background: #c73652; }
+  .score {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+  }
+  .score span { padding: 0.3rem 1rem; border-radius: 6px; }
+  .score .o-score { background: rgba(233,69,96,0.2); color: #e94560; }
+  .score .x-score { background: rgba(83,216,251,0.2); color: #53d8fb; }
+  .score .d-score { background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>〇×ゲーム</h1>
+  <div class="score">
+    <span class="o-score">〇: <strong id="o-wins">0</strong></span>
+    <span class="d-score">引分: <strong id="draws">0</strong></span>
+    <span class="x-score">×: <strong id="x-wins">0</strong></span>
+  </div>
+  <div class="status" id="status">〇 のターン</div>
+  <div class="board" id="board"></div>
+  <button class="reset-btn" onclick="resetGame()">リセット</button>
+</div>
+
+<script>
+const board = document.getElementById('board');
+const statusEl = document.getElementById('status');
+let cells = Array(9).fill('');
+let current = 'o';
+let gameOver = false;
+let scores = { o: 0, x: 0, d: 0 };
+
+const winPatterns = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+function render() {
+  board.innerHTML = '';
+  cells.forEach((val, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell' + (val ? ' ' + val : '');
+    cell.textContent = val === 'o' ? '〇' : val === 'x' ? '×' : '';
+    cell.addEventListener('click', () => play(i));
+    board.appendChild(cell);
+  });
+}
+
+function play(i) {
+  if (cells[i] || gameOver) return;
+  cells[i] = current;
+  const win = checkWin(current);
+  if (win) {
+    gameOver = true;
+    scores[current]++;
+    updateScores();
+    render();
+    win.forEach(idx => board.children[idx].classList.add('win'));
+    statusEl.textContent = (current === 'o' ? '〇' : '×') + ' の勝ち!';
+    return;
+  }
+  if (cells.every(c => c)) {
+    gameOver = true;
+    scores.d++;
+    updateScores();
+    render();
+    statusEl.textContent = '引き分け!';
+    return;
+  }
+  current = current === 'o' ? 'x' : 'o';
+  statusEl.textContent = (current === 'o' ? '〇' : '×') + ' のターン';
+  render();
+}
+
+function checkWin(player) {
+  for (const p of winPatterns) {
+    if (p.every(i => cells[i] === player)) return p;
+  }
+  return null;
+}
+
+function updateScores() {
+  document.getElementById('o-wins').textContent = scores.o;
+  document.getElementById('x-wins').textContent = scores.x;
+  document.getElementById('draws').textContent = scores.d;
+}
+
+function resetGame() {
+  cells = Array(9).fill('');
+  current = 'o';
+  gameOver = false;
+  statusEl.textContent = '〇 のターン';
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
