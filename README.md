@@ -115,6 +115,10 @@ Create a `test.config.json` file in the project root to customize behavior:
 
 ```
 test/
+├── calculator/     # Simple browser-based calculator
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
 ├── src/            # Source code
 ├── tests/          # Test files
 ├── docs/           # Documentation
@@ -184,6 +188,33 @@ Contributions are welcome! Whether it is a bug report, feature request, or a pul
 - Keep functions small and focused on a single responsibility.
 - Include tests for any new functionality or bug fixes.
 - Follow the existing patterns and conventions in the codebase.
+
+## Calculator
+
+A simple, modern calculator built with HTML, CSS, and JavaScript. No build tools or dependencies required.
+
+### Features
+
+- Four basic operations: add (+), subtract (-), multiply (×), divide (÷)
+- Percent (%), sign toggle (±), decimal point
+- Clear (C) and backspace
+- Keyboard input support
+- Responsive design for mobile and desktop
+
+### How to Use
+
+1. Open `calculator/index.html` in any browser.
+2. Click buttons or use the keyboard:
+
+| Key | Action |
+|-----|--------|
+| `0`-`9` | Enter digits |
+| `.` | Decimal point |
+| `+` `-` `*` `/` | Operators |
+| `Enter` or `=` | Calculate result |
+| `Backspace` | Delete last digit |
+| `Escape` | Clear all |
+| `%` | Percent |
 
 ## License
 
